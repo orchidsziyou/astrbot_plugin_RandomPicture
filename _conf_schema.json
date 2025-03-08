@@ -1,0 +1,7 @@
+{
+  "CoolDownTime": {
+    "description": "The cool down time between each picture in seconds",
+    "type": "int",
+    "default": 30
+  }
+}

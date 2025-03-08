@@ -1,0 +1,9 @@
+{
+  "sequence_file_path1" : "./data/plugins/astrbot_plugin_RandomPicture_Data/sqe.json",
+  "sequence_file_path2" : "./data/plugins/astrbot_plugin_RandomPicture_Data/sqe2.json",
+  "MainFolder": "./data/plugins/astrbot_plugin_RandomPicture_Data",
+  "res1Folder": "./data/plugins/astrbot_plugin_RandomPicture_Data/res1",
+  "res2Folder": "./data/plugins/astrbot_plugin_RandomPicture_Data/res2",
+  "db_path": "./data/plugins/astrbot_plugin_RandomPicture/bot.db",
+  "CoolDownTime": 30
+}
