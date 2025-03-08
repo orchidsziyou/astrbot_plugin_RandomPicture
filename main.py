@@ -19,7 +19,7 @@ db_path = 'bot.db'
 
 global last_Picture_time, Current_Picture_time,CoolDownTime
 last_Picture_time = 0
-CoolDownTime=30
+CoolDownTime=5
 
 
 def time_to_seconds(time_obj):
@@ -283,14 +283,14 @@ class MyPlugin(Star):
                         except Exception as e:
                             print(f"复制文件失败: {e}")
 
-    @filter.command("随机涩图")
+    @filter.command("随机涩图",alias=["setu"])
     async def send_picture(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
         global last_Picture_time, Current_Picture_time
         Current_Picture_time = int(datetime.now().timestamp())
         time_diff_in_seconds = Current_Picture_time - last_Picture_time
         last_Picture_time = Current_Picture_time
-        if time_diff_in_seconds < 30:
+        if time_diff_in_seconds < CoolDownTime:
             yield event.plain_result("进CD了，请稍后再试")
             return
         user_name = event.get_sender_name()
@@ -315,14 +315,14 @@ class MyPlugin(Star):
             else:
                 pass
 
-    @filter.command("随机鬼图")
+    @filter.command("随机鬼图",alias=["guitu"])
     async def send_picture_guitu(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
         global last_Picture_time, Current_Picture_time
         Current_Picture_time = int(datetime.now().timestamp())
         time_diff_in_seconds = Current_Picture_time - last_Picture_time
         last_Picture_time = Current_Picture_time
-        if time_diff_in_seconds < 30:
+        if time_diff_in_seconds < CoolDownTime:
             yield event.plain_result("进CD了，请稍后再试")
             return
         user_name = event.get_sender_name()
