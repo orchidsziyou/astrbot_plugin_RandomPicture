@@ -12,6 +12,7 @@ from astrbot.core.message.components import At, Image, Plain
 import json
 
 from astrbot.core.star.filter.event_message_type import EventMessageType
+from astrbot.core.star.filter.permission import PermissionType
 
 sequence_file_path1 = './data/plugins/astrbot_plugin_RandomPicture_Data/sqe.json'
 sequence_file_path2 = './data/plugins/astrbot_plugin_RandomPicture_Data/sqe2.json'
@@ -99,6 +100,17 @@ def get_Top10(type):
     conn.close()
     #print(123)
     return result
+
+def get_total_file_size(directory):
+    total_size = 0
+    count=0
+    # 遍历指定目录中的所有文件
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            total_size += os.path.getsize(file_path)
+            count+=1
+    return total_size,count
 
 
 @register("PictureCollect", "orchidsziyou", "一个简单的随机setu插件", "1.0.0", "None")
@@ -407,6 +419,35 @@ class MyPlugin(Star):
     async def send_ping(self, event: AstrMessageEvent):
         '''这是一个 发送ping 指令'''
         yield event.plain_result("pong")
+
+    @filter.command_group("统计")
+    def statistics_group(self):
+        pass
+
+    @statistics_group.command("涩图")
+    async def statistics_setu(self, event: AstrMessageEvent):
+        '''这是一个 统计涩图 指令'''
+        total_size,count=get_total_file_size(ResPath1)
+        total_size=round(total_size/1024/1024,2)
+        chain = [
+            Plain(f"涩图总大小: {total_size}MB\n"),
+            Plain(f"涩图总数: {count}张")
+        ]
+        yield event.chain_result(chain)
+
+    @statistics_group.command("鬼图")
+    async def statistics_guitu(self, event: AstrMessageEvent):
+        '''这是一个 统计鬼图 指令'''
+        total_size,count=get_total_file_size(ResPath2)
+        total_size = round(total_size / 1024 / 1024, 2)
+        chain = [
+            Plain(f"鬼图总大小: {total_size}MB\n"),
+            Plain(f"鬼图总数: {count}张")
+        ]
+        yield event.chain_result(chain)
+
+
+
 
     # @filter.event_message_type(EventMessageType.ALL)
     # async def handle_event_message(self, event: AstrMessageEvent, result: MessageEventResult):
