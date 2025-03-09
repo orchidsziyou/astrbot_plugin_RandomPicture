@@ -138,6 +138,7 @@ class MyPlugin(Star):
         # print(message_chain)
         logger.info(message_chain)
         senderID = event.get_sender_id()
+        Upload_count=0
         # print(senderID)
         for msg in message_chain:
             # print(msg)
@@ -162,8 +163,8 @@ class MyPlugin(Star):
                     print(f"图片已成功复制到: {destination_path}")
                     ImageCount += 1
                     update_last_sequence(ImageCount, sequence_file_path1)
-                    yield event.plain_result("图片上传成功")
                     update_times(senderID, '1')
+                    Upload_count+=1
                 except Exception as e:
                     print(f"复制文件失败: {e}")
 
@@ -203,10 +204,15 @@ class MyPlugin(Star):
                             print(f"图片已成功复制到: {destination_path}")
                             ImageCount += 1
                             update_last_sequence(ImageCount, sequence_file_path1)
-                            yield event.plain_result("图片上传成功")
+                            Upload_count+=1
                             update_times(senderID, '1')
                         except Exception as e:
                             print(f"复制文件失败: {e}")
+
+        if Upload_count == 0:
+            yield event.plain_result("图呢")
+        else:
+            yield event.plain_result(f"成功上传{Upload_count}张涩图")
 
     @filter.command("上传鬼图")
     async def upload_picture_guitu(self, event: AstrMessageEvent):
@@ -215,6 +221,7 @@ class MyPlugin(Star):
         # print(message_chain)
         logger.info(message_chain)
         senderID = event.get_sender_id()
+        Upload_count = 0
         for msg in message_chain:
             # print(msg)
             if msg.type == 'Image':
@@ -237,7 +244,7 @@ class MyPlugin(Star):
                     print(f"图片已成功复制到: {destination_path}")
                     ImageCount += 1
                     update_last_sequence(ImageCount, sequence_file_path2)
-                    yield event.plain_result("图片上传成功")
+                    Upload_count += 1
                     update_times(senderID, '2')
                 except Exception as e:
                     print(f"复制文件失败: {e}")
@@ -278,10 +285,15 @@ class MyPlugin(Star):
                             print(f"图片已成功复制到: {destination_path}")
                             ImageCount += 1
                             update_last_sequence(ImageCount, sequence_file_path2)
-                            yield event.plain_result("图片上传成功")
+                            Upload_count +=1
                             update_times(senderID, '2')
                         except Exception as e:
                             print(f"复制文件失败: {e}")
+
+        if Upload_count == 0:
+            yield event.plain_result("图呢")
+        else:
+            yield event.plain_result(f"成功上传{Upload_count}张鬼图")
 
     @filter.command("随机涩图",alias=["setu"])
     async def send_picture(self, event: AstrMessageEvent):
@@ -389,6 +401,12 @@ class MyPlugin(Star):
             yield event.chain_result(chain)
         else:
             yield event.plain_result("统计失败")
+
+
+    @filter.command("ping")
+    async def send_ping(self, event: AstrMessageEvent):
+        '''这是一个 发送ping 指令'''
+        yield event.plain_result("pong")
 
     # @filter.event_message_type(EventMessageType.ALL)
     # async def handle_event_message(self, event: AstrMessageEvent, result: MessageEventResult):
