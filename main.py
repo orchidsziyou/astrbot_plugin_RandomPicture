@@ -18,9 +18,10 @@ sequence_file_path1 = './data/plugins/astrbot_plugin_RandomPicture_Data/sqe.json
 sequence_file_path2 = './data/plugins/astrbot_plugin_RandomPicture_Data/sqe2.json'
 db_path = 'bot.db'
 
-global last_Picture_time, Current_Picture_time,CoolDownTime
+global last_Picture_time, Current_Picture_time, CoolDownTime, flag01
 last_Picture_time = 0
-CoolDownTime=5
+CoolDownTime = 5
+flag01 = 0
 
 
 def time_to_seconds(time_obj):
@@ -54,7 +55,7 @@ def update_times(account, type):
     if type == '1':
         c.execute("SELECT COUNT(*) FROM SeTuTongJi WHERE QQID = ?", (account,))
     elif type == '2':
-        c.execute("SELECT COUNT(*) FROM GuiTuTOngJi WHERE QQID = ?", (account,))
+        c.execute("SELECT COUNT(*) FROM GuiTuTongJi WHERE QQID = ?", (account,))
     result = c.fetchone()
 
     # 如果记录存在，result[0] > 0，则不插入
@@ -62,13 +63,13 @@ def update_times(account, type):
         if type == '1':
             c.execute("UPDATE SeTuTongJi SET Times = Times + 1 WHERE QQID = ?", (account,))
         elif type == '2':
-            c.execute("UPDATE GuiTuTOngJi SET Times = Times + 1 WHERE QQID = ?", (account,))
+            c.execute("UPDATE GuiTuTongJi SET Times = Times + 1 WHERE QQID = ?", (account,))
 
     else:
         if type == '1':
             c.execute("INSERT INTO SeTuTongJi (QQID, Times) VALUES (?, ?)", (account, 1))
         else:
-            c.execute("INSERT INTO GuiTuTOngJi (QQID, Times) VALUES (?, ?)", (account, 1))
+            c.execute("INSERT INTO GuiTuTongJi (QQID, Times) VALUES (?, ?)", (account, 1))
 
     conn.commit()
     conn.close()
@@ -82,7 +83,7 @@ def get_times(account, type):
     if type == '1':
         c.execute("SELECT Times FROM SeTuTongJi WHERE QQID = ?", (account,))
     elif type == '2':
-        c.execute("SELECT Times FROM GuiTuTOngJi WHERE QQID = ?", (account,))
+        c.execute("SELECT Times FROM GuiTuTongJi WHERE QQID = ?", (account,))
     result = c.fetchone()
     conn.close()
     return result[0]
@@ -91,38 +92,56 @@ def get_times(account, type):
 def get_Top10(type):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    #print(123)
+    # print(123)
     if type == '1':
         cursor = c.execute("SELECT QQID,Times FROM SeTuTongJi ORDER BY Times DESC LIMIT 10")
     elif type == '2':
-        cursor = c.execute("SELECT QQID,Times FROM GuiTuTOngJi ORDER BY Times DESC LIMIT 10")
+        cursor = c.execute("SELECT QQID,Times FROM GuiTuTongJi ORDER BY Times DESC LIMIT 10")
     result = cursor.fetchall()
     conn.close()
-    #print(123)
+    # print(123)
     return result
+
 
 def get_total_file_size(directory):
     total_size = 0
-    count=0
+    count = 0
     # 遍历指定目录中的所有文件
     for dirpath, dirnames, filenames in os.walk(directory):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
             total_size += os.path.getsize(file_path)
-            count+=1
-    return total_size,count
+            count += 1
+    return total_size, count
+
+def CreateDatabase(path):
+    conn = sqlite3.connect(path)
+
+    # Creating a table
+    conn.execute('''CREATE TABLE if NOT EXISTS SeTuTongJi 
+                 (id INTEGER PRIMARY KEY,
+                 QQID TEXT,
+                 Times Integer)''')
+
+    conn.execute('''CREATE TABLE if NOT EXISTS GuiTuTongJi 
+                 (id INTEGER PRIMARY KEY,
+                 QQID TEXT,
+                 Times Integer)''')
+    # Committing changes and closing the connection to the database
+    conn.commit()
+    conn.close()
 
 
 @register("PictureCollect", "orchidsziyou", "一个简单的随机setu插件", "1.0.0", "None")
 class MyPlugin(Star):
-    def __init__(self, context: Context,config:dict):
+    def __init__(self, context: Context, config: dict):
         super().__init__(context)
         # 创建插件需要用到的辅助目录
         self.config = config
         print(self.config)
 
-
-        global sequence_file_path1, sequence_file_path2, mainResPath, ResPath1, ResPath2, db_path,CoolDownTime
+        global sequence_file_path1, sequence_file_path2, mainResPath, ResPath1, ResPath2, db_path, CoolDownTime,flag01
+        flag01 = 0
 
         # 读取配置文件
         CoolDownTime = self.config['CoolDownTime']
@@ -136,12 +155,13 @@ class MyPlugin(Star):
                 ResPath1 = data['res1Folder']
                 ResPath2 = data['res2Folder']
                 db_path = data['db_path']
-
+                CreateDatabase(db_path)
 
         if not os.path.exists(mainResPath):
             os.makedirs(mainResPath)
             os.mkdir(ResPath1)
             os.mkdir(ResPath2)
+            CreateDatabase(db_path)
 
     @filter.command("上传涩图")
     async def upload_picture(self, event: AstrMessageEvent):
@@ -150,7 +170,7 @@ class MyPlugin(Star):
         # print(message_chain)
         logger.info(message_chain)
         senderID = event.get_sender_id()
-        Upload_count=0
+        Upload_count = 0
         # print(senderID)
         for msg in message_chain:
             # print(msg)
@@ -176,7 +196,7 @@ class MyPlugin(Star):
                     ImageCount += 1
                     update_last_sequence(ImageCount, sequence_file_path1)
                     update_times(senderID, '1')
-                    Upload_count+=1
+                    Upload_count += 1
                 except Exception as e:
                     print(f"复制文件失败: {e}")
 
@@ -216,7 +236,7 @@ class MyPlugin(Star):
                             print(f"图片已成功复制到: {destination_path}")
                             ImageCount += 1
                             update_last_sequence(ImageCount, sequence_file_path1)
-                            Upload_count+=1
+                            Upload_count += 1
                             update_times(senderID, '1')
                         except Exception as e:
                             print(f"复制文件失败: {e}")
@@ -297,7 +317,7 @@ class MyPlugin(Star):
                             print(f"图片已成功复制到: {destination_path}")
                             ImageCount += 1
                             update_last_sequence(ImageCount, sequence_file_path2)
-                            Upload_count +=1
+                            Upload_count += 1
                             update_times(senderID, '2')
                         except Exception as e:
                             print(f"复制文件失败: {e}")
@@ -307,16 +327,22 @@ class MyPlugin(Star):
         else:
             yield event.plain_result(f"成功上传{Upload_count}张鬼图")
 
-    @filter.command("随机涩图",alias=["setu"])
+    @filter.command("随机涩图", alias=["setu"])
     async def send_picture(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
-        global last_Picture_time, Current_Picture_time
+        global last_Picture_time, Current_Picture_time, flag01
         Current_Picture_time = int(datetime.now().timestamp())
         time_diff_in_seconds = Current_Picture_time - last_Picture_time
         last_Picture_time = Current_Picture_time
         if time_diff_in_seconds < CoolDownTime:
-            yield event.plain_result("进CD了，请稍后再试")
+            cd_time = CoolDownTime - time_diff_in_seconds
+            if flag01 == 0:
+                flag01 += 1
+                yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
+            else:
+                flag01 += 1
             return
+        flag01 = 0
         user_name = event.get_sender_name()
         message_str = event.message_str  # 用户发的纯文本消息字符串
         message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
@@ -339,16 +365,22 @@ class MyPlugin(Star):
             else:
                 pass
 
-    @filter.command("随机鬼图",alias=["guitu"])
+    @filter.command("随机鬼图", alias=["guitu"])
     async def send_picture_guitu(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
-        global last_Picture_time, Current_Picture_time
+        global last_Picture_time, Current_Picture_time,flag01
         Current_Picture_time = int(datetime.now().timestamp())
         time_diff_in_seconds = Current_Picture_time - last_Picture_time
         last_Picture_time = Current_Picture_time
         if time_diff_in_seconds < CoolDownTime:
-            yield event.plain_result("进CD了，请稍后再试")
+            cd_time = CoolDownTime - time_diff_in_seconds
+            if flag01 == 0:
+                flag01 += 1
+                yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
+            else:
+                flag01 += 1
             return
+        flag01 = 0
         user_name = event.get_sender_name()
         message_str = event.message_str  # 用户发的纯文本消息字符串
         message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
@@ -380,11 +412,11 @@ class MyPlugin(Star):
         result = get_Top10('1')
         # print(321)
         if len(result) > 0:
-            str=""
+            str = ""
             # print(3212)
             for i in range(min(len(result), 10)):
-                str+= f"{i + 1}. {result[i][0]} 传了 {result[i][1]} 张\n"
-            chain =[
+                str += f"{i + 1}. {result[i][0]} 传了 {result[i][1]} 张\n"
+            chain = [
                 Plain("涩图排行榜\n"),
                 Plain(str)
             ]
@@ -414,7 +446,6 @@ class MyPlugin(Star):
         else:
             yield event.plain_result("统计失败")
 
-
     @filter.command("ping")
     async def send_ping(self, event: AstrMessageEvent):
         '''这是一个 发送ping 指令'''
@@ -427,8 +458,8 @@ class MyPlugin(Star):
     @statistics_group.command("涩图")
     async def statistics_setu(self, event: AstrMessageEvent):
         '''这是一个 统计涩图 指令'''
-        total_size,count=get_total_file_size(ResPath1)
-        total_size=round(total_size/1024/1024,2)
+        total_size, count = get_total_file_size(ResPath1)
+        total_size = round(total_size / 1024 / 1024, 2)
         chain = [
             Plain(f"涩图总大小: {total_size}MB\n"),
             Plain(f"涩图总数: {count}张")
@@ -438,16 +469,13 @@ class MyPlugin(Star):
     @statistics_group.command("鬼图")
     async def statistics_guitu(self, event: AstrMessageEvent):
         '''这是一个 统计鬼图 指令'''
-        total_size,count=get_total_file_size(ResPath2)
+        total_size, count = get_total_file_size(ResPath2)
         total_size = round(total_size / 1024 / 1024, 2)
         chain = [
             Plain(f"鬼图总大小: {total_size}MB\n"),
             Plain(f"鬼图总数: {count}张")
         ]
         yield event.chain_result(chain)
-
-
-
 
     # @filter.event_message_type(EventMessageType.ALL)
     # async def handle_event_message(self, event: AstrMessageEvent, result: MessageEventResult):

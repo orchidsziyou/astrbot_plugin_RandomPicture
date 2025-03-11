@@ -4,6 +4,6 @@
   "MainFolder": "./data/plugins/astrbot_plugin_RandomPicture_Data",
   "res1Folder": "./data/plugins/astrbot_plugin_RandomPicture_Data/res1",
   "res2Folder": "./data/plugins/astrbot_plugin_RandomPicture_Data/res2",
-  "db_path": "./data/plugins/astrbot_plugin_RandomPicture/bot.db",
+  "db_path": "./data/plugins/astrbot_plugin_RandomPicture_Data/bot.db",
   "CoolDownTime": 30
 }
