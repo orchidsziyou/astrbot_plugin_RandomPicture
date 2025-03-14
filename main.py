@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 import os
 import shutil
@@ -5,12 +6,15 @@ from datetime import time
 from random import random, randint
 import sqlite3
 
+from botpy import Permission
+
 from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
-from astrbot.core.message.components import At, Image, Plain
+from astrbot.core.message.components import At, Image, Plain, Reply
 import json
 
+from astrbot.core.platform import MessageType
 from astrbot.core.star.filter.event_message_type import EventMessageType
 from astrbot.core.star.filter.permission import PermissionType
 
@@ -114,6 +118,7 @@ def get_total_file_size(directory):
             count += 1
     return total_size, count
 
+
 def CreateDatabase(path):
     conn = sqlite3.connect(path)
 
@@ -132,6 +137,31 @@ def CreateDatabase(path):
     conn.close()
 
 
+def compare_file_with_directory(file1, dir2):
+    def get_file_hash(file_path, hash_algorithm='sha256'):
+        hash_func = hashlib.new(hash_algorithm)
+        with open(file_path, 'rb') as f:
+            while chunk := f.read(8192):  # 分块读取文件内容
+                hash_func.update(chunk)
+        return hash_func.hexdigest()
+
+    def files_are_equal(file1, file2):
+        # 比较文件大小
+        if os.path.getsize(file1) != os.path.getsize(file2):
+            return False
+        # 如果大小相同，逐字节比较文件内容
+        return get_file_hash(file1) == get_file_hash(file2)
+
+    # 获取目录中的文件列表（递归方式遍历所有文件）
+    for root, _, files in os.walk(dir2):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if files_are_equal(file1, file_path):
+                print(f"文件 {file1} 与 {file_path} 内容相同")
+                return True, file_path
+    return False, "0"  # 如果没有找到匹配的文件
+
+
 @register("PictureCollect", "orchidsziyou", "一个简单的随机setu插件", "1.0.0", "None")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
@@ -140,7 +170,7 @@ class MyPlugin(Star):
         self.config = config
         print(self.config)
 
-        global sequence_file_path1, sequence_file_path2, mainResPath, ResPath1, ResPath2, db_path, CoolDownTime,flag01
+        global sequence_file_path1, sequence_file_path2, mainResPath, ResPath1, ResPath2, db_path, CoolDownTime, flag01
         flag01 = 0
 
         # 读取配置文件
@@ -330,23 +360,24 @@ class MyPlugin(Star):
     @filter.command("随机涩图", alias=["setu"])
     async def send_picture(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
-        global last_Picture_time, Current_Picture_time, flag01
-        Current_Picture_time = int(datetime.now().timestamp())
-        time_diff_in_seconds = Current_Picture_time - last_Picture_time
-        last_Picture_time = Current_Picture_time
-        if time_diff_in_seconds < CoolDownTime:
-            cd_time = CoolDownTime - time_diff_in_seconds
-            if flag01 == 0:
-                flag01 += 1
-                yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
-            else:
-                flag01 += 1
-            return
-        flag01 = 0
-        user_name = event.get_sender_name()
-        message_str = event.message_str  # 用户发的纯文本消息字符串
+        message_type = event.get_message_type()
+        if message_type == MessageType.FRIEND_MESSAGE:
+            pass
+        else:
+            global last_Picture_time, Current_Picture_time, flag01
+            Current_Picture_time = int(datetime.now().timestamp())
+            time_diff_in_seconds = Current_Picture_time - last_Picture_time
+            last_Picture_time = Current_Picture_time
+            if time_diff_in_seconds < CoolDownTime:
+                cd_time = CoolDownTime - time_diff_in_seconds
+                if flag01 == 0:
+                    flag01 += 1
+                    yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
+                else:
+                    flag01 += 1
+                return
+            flag01 = 0
         message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        # print(message_chain)
         logger.info(message_chain)
         MaxNumber = get_last_sequence(sequence_file_path1)
         if MaxNumber == 0:
@@ -355,9 +386,18 @@ class MyPlugin(Star):
             RandomNumber = randint(0, MaxNumber)
             photo_path = f"{RandomNumber}.png"
             destination_path = os.path.join(ResPath1, photo_path)
+            TryCount = 0
+            while not os.path.exists(destination_path):
+                RandomNumber = randint(0, MaxNumber)
+                photo_path = f"{RandomNumber}.png"
+                destination_path = os.path.join(ResPath1, photo_path)
+                TryCount += 1
+                if TryCount > 10:
+                    yield event.chain_result("发送失败")
+                    return
             if os.path.exists(destination_path):
                 chain = [
-                    At(qq=event.get_sender_id()),
+                    Reply(id=event.message_obj.message_id),
                     Image.fromFileSystem(destination_path)
                 ]
                 # 发送图片
@@ -368,19 +408,23 @@ class MyPlugin(Star):
     @filter.command("随机鬼图", alias=["guitu"])
     async def send_picture_guitu(self, event: AstrMessageEvent):
         '''这是一个 发送图片 指令'''
-        global last_Picture_time, Current_Picture_time,flag01
-        Current_Picture_time = int(datetime.now().timestamp())
-        time_diff_in_seconds = Current_Picture_time - last_Picture_time
-        last_Picture_time = Current_Picture_time
-        if time_diff_in_seconds < CoolDownTime:
-            cd_time = CoolDownTime - time_diff_in_seconds
-            if flag01 == 0:
-                flag01 += 1
-                yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
-            else:
-                flag01 += 1
-            return
-        flag01 = 0
+        message_type = event.get_message_type()
+        if message_type == MessageType.FRIEND_MESSAGE:
+            pass
+        else:
+            global last_Picture_time, Current_Picture_time, flag01
+            Current_Picture_time = int(datetime.now().timestamp())
+            time_diff_in_seconds = Current_Picture_time - last_Picture_time
+            last_Picture_time = Current_Picture_time
+            if time_diff_in_seconds < CoolDownTime:
+                cd_time = CoolDownTime - time_diff_in_seconds
+                if flag01 == 0:
+                    flag01 += 1
+                    yield event.plain_result(f"进CD了，请{cd_time}秒后再试")
+                else:
+                    flag01 += 1
+                return
+            flag01 = 0
         user_name = event.get_sender_name()
         message_str = event.message_str  # 用户发的纯文本消息字符串
         message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
@@ -393,9 +437,18 @@ class MyPlugin(Star):
             RandomNumber = randint(0, MaxNumber)
             photo_path = f"{RandomNumber}.png"
             destination_path = os.path.join(ResPath2, photo_path)
+            TryCount = 0
+            while not os.path.exists(destination_path):
+                RandomNumber = randint(0, MaxNumber)
+                photo_path = f"{RandomNumber}.png"
+                destination_path = os.path.join(ResPath2, photo_path)
+                TryCount += 1
+                if TryCount > 10:
+                    yield event.chain_result("发送失败")
+                    return
             if os.path.exists(destination_path):
                 chain = [
-                    At(qq=event.get_sender_id()),
+                    Reply(id=event.message_obj.message_id),
                     Image.fromFileSystem(destination_path)
                 ]
                 # 发送图片
@@ -476,6 +529,97 @@ class MyPlugin(Star):
             Plain(f"鬼图总数: {count}张")
         ]
         yield event.chain_result(chain)
+
+    @filter.permission_type(PermissionType.ADMIN)
+    @filter.command("删除图片")
+    async def delete_setu(self, event: AstrMessageEvent):
+        '''这是一个 删除涩图 指令'''
+        bot_id = event.get_self_id()
+        sender_id = event.get_sender_id()
+        message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
+        # print(message_chain)
+        for msg in message_chain:
+            # print(msg)
+            # print("\n")
+            if msg.type == 'Reply':
+                from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
+                assert isinstance(event, AiocqhttpMessageEvent)
+                client = event.bot
+                payload = {
+                    "message_id": msg.id
+                }
+                response = await client.api.call_action('get_msg', **payload)  # 调用 协议端  API
+
+                if str(response['sender']['user_id']) != bot_id:
+                    return
+
+                messages = response['message']
+                localdiskpath = ''
+                reply_msg = ''
+                for msg in messages:
+                    # print(msg)
+                    # print("\n")
+                    if msg['type'] == 'image':
+                        # print(msg['data']['file'])
+                        # print("\n")
+                        from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import \
+                            AiocqhttpMessageEvent
+                        assert isinstance(event, AiocqhttpMessageEvent)
+                        client = event.bot
+                        payloads2 = {
+                            "file_id": msg['data']['file']
+                        }
+                        response = await client.api.call_action('get_image', **payloads2)  # 调用 协议端  API
+                        localdiskpath = response['file']
+                        print(localdiskpath)
+
+                    if msg['type'] == 'reply':
+                        from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import \
+                            AiocqhttpMessageEvent
+                        assert isinstance(event, AiocqhttpMessageEvent)
+                        client = event.bot
+                        payloads2 = {
+                            "message_id": msg['data']['id']
+                        }
+                        response01 = await client.api.call_action('get_msg', **payloads2)
+                        # print(response01)
+                        # print('\n')
+                        if response01['message'][0]['type'] == 'text':
+                            reply_msg = response01['message'][0]['data']['text']
+                            print(reply_msg)
+
+                if localdiskpath == '':
+                    yield event.plain_result("删除失败")
+                    return
+                if reply_msg == '':
+                    yield event.plain_result("删除失败")
+                    return
+
+                if reply_msg == '/setu' or reply_msg == '/随机涩图':
+                    print('删除涩图')
+                    result, path = compare_file_with_directory(localdiskpath, ResPath1)
+                    print(result)
+                    if result:
+                        os.remove(path)
+                        print(f"图片已成功删除: {path}")
+                        yield event.plain_result("成功删除涩图")
+
+                elif reply_msg == '/guitu' or reply_msg == '/随机鬼图':
+                    print('删除鬼图')
+                    result, path = compare_file_with_directory(localdiskpath, ResPath2)
+                    print(result)
+                    if result:
+                        os.remove(path)
+                        print(f"图片已成功删除: {path}")
+                        yield event.plain_result("成功删除鬼图")
+                else:
+                    yield event.plain_result("删除失败")
+
+    @filter.event_message_type(EventMessageType.PRIVATE_MESSAGE)
+    async def handle_private_message(self, event: AstrMessageEvent, result: MessageEventResult):
+        '''处理私聊消息'''
+        message_chain = event.get_messages()  # 用户所发的消息的消息链 # from astrbot.api.message_components import *
+        print(event.message_obj)
 
     # @filter.event_message_type(EventMessageType.ALL)
     # async def handle_event_message(self, event: AstrMessageEvent, result: MessageEventResult):
